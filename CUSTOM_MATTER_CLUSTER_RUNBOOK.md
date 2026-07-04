@@ -74,6 +74,25 @@ Required behavior:
 - Add entity descriptions for your custom attributes (for example target flow rate and target ratio).
 - Ensure any unit fallbacks needed by your Python/runtime version are present.
 
+Hook-safe implementation notes from this session:
+
+- In core integration code, do not add `version` to `homeassistant/components/matter/manifest.json`; this fails `hassfest` for built-in integrations.
+- If you need compatibility fallbacks for ratio/density units, prefer module-level constants instead of reassigning imported types. Example pattern:
+
+```python
+try:
+  from homeassistant.const import UnitOfRatio
+except ImportError:
+  UNIT_OF_RATIO_PERCENTAGE = PERCENTAGE
+  UNIT_OF_RATIO_PARTS_PER_MILLION = "ppm"
+else:
+  UNIT_OF_RATIO_PERCENTAGE = UnitOfRatio.PERCENTAGE
+  UNIT_OF_RATIO_PARTS_PER_MILLION = UnitOfRatio.PARTS_PER_MILLION
+```
+
+- Use `\u03bc` (Greek mu) for micro-unit fallback strings (for example `"\u03bcg/m\u00b3"`) to satisfy pylint custom rules.
+- For CHIP classes imported as untyped `Any`, targeted `# type: ignore[misc]` on subclass lines may be required to satisfy mypy.
+
 ## 3.2 Point integration to local custom add-on
 
 Edit `homeassistant/components/matter/const.py` so:
@@ -223,6 +242,37 @@ If you are deploying via custom component override:
 1. Copy patched `matter` integration folder to `/config/custom_components/matter`.
 2. Restart HA Core.
 
+From devcontainer, sync core integration code to HA host:
+
+```bash
+export HA_USER=root
+export HA_HOST=<your-ha-host-or-ip>
+export HA_SSH_PORT=22222
+
+LOCAL_MATTER_DIR=/workspaces/homeassistant-core/homeassistant/components/matter/
+rsync -avz --delete --exclude "__pycache__/" --exclude "*.pyc" -e "ssh -p ${HA_SSH_PORT}" "$LOCAL_MATTER_DIR" "${HA_USER}@${HA_HOST}:/config/custom_components/matter/"
+
+# REQUIRED for custom integration loading:
+# inject a version key into the deployed custom-components manifest only.
+# Do NOT add version to the core source manifest in this repository.
+python - <<'PY' | ssh -p "${HA_SSH_PORT}" "${HA_USER}@${HA_HOST}" "cat > /config/custom_components/matter/manifest.json"
+import json
+from pathlib import Path
+
+manifest = json.loads(
+  Path("/workspaces/homeassistant-core/homeassistant/components/matter/manifest.json").read_text(encoding="utf-8")
+)
+manifest["version"] = "0.0.1"
+print(json.dumps(manifest, indent=2, ensure_ascii=False))
+PY
+```
+
+Optional verification on HA host:
+
+```bash
+ssh -p "${HA_SSH_PORT}" "${HA_USER}@${HA_HOST}" "ls -la /config/custom_components/matter && grep -n 'ADDON_SLUG' /config/custom_components/matter/const.py"
+```
+
 HA host commands:
 
 ```bash
@@ -359,6 +409,17 @@ Add-ons repo (`/workspaces/homeassistant-addons`):
 git add matter_server_gep
 git commit -m "Patch local Matter add-on for GEP custom cluster"
 ```
+
+Pre-commit workflow notes:
+
+- Use `prek run --all-files` from an activated environment.
+- Avoid `uv run prek run --all-files` for this repo on host machines; it may create a fresh env that does not include `prek`.
+- If all-files mypy fails on known `.py` + `.pyi` duplicate-module paths unrelated to your changes, prefer normal staged commit hooks and/or run targeted mypy on changed files.
+
+Host toolchain notes (macOS):
+
+- Keep Xcode/clang current when running host `script/setup` with Python 3.14.
+- If host native builds keep failing, commit and run checks from devcontainer.
 
 ---
 
@@ -645,3 +706,39 @@ export HA_SSH_PORT=22
 3. Rebuilds and restarts `local_matter_server_gep` if already installed.
 4. Installs and starts `local_matter_server_gep` if not installed.
 5. Tails add-on logs.
+
+## 17) Git Remote and Push Workflow (Core + Add-ons)
+
+Recommended remote layout in both repositories:
+
+- `origin` -> your fork (push target)
+- `upstream` -> Home Assistant upstream repo (pull/rebase target)
+
+Core repo (`/workspaces/homeassistant-core`):
+
+```bash
+git remote rename origin upstream
+git remote add origin https://github.com/<your-user>/core.git
+git remote -v
+git push -u origin add_custom_cluster
+```
+
+Add-ons repo (`/workspaces/homeassistant-addons`):
+
+```bash
+git remote rename origin upstream
+git remote add origin https://github.com/<your-user>/addons.git
+git remote -v
+git push -u origin add_custom_cluster
+```
+
+If push from SourceTree returns `403` but terminal `git push` succeeds:
+
+- SourceTree is using stale/wrong credentials.
+- Re-auth SourceTree GitHub account and clear stale `github.com` keychain entries.
+- As fallback, push from terminal and continue PR flow.
+
+PR targets:
+
+- Core: `<your-user>/core:add_custom_cluster` -> `home-assistant/core:dev`
+- Add-ons: `<your-user>/addons:add_custom_cluster` -> `home-assistant/addons:master`
