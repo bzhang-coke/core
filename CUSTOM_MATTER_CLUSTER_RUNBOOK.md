@@ -74,6 +74,39 @@ Required behavior:
 - Add entity descriptions for your custom attributes (for example target flow rate and target ratio).
 - Ensure any unit fallbacks needed by your Python/runtime version are present.
 
+## 3.1.1 Control Labels in UI (Flow rate / Ratio)
+
+If custom number controls show a generic label like `Matter Water Valve`, set explicit names in the discovery schema.
+
+In `homeassistant/components/matter/number.py`, for custom cluster entities:
+
+```python
+MatterNumberEntityDescription(
+  key="GepCustomClusterTargetFlowRate",
+  name="Flow rate",
+  translation_key="target_flow_rate",
+  ...
+)
+
+MatterNumberEntityDescription(
+  key="GepCustomClusterTargetRatio",
+  name="Ratio",
+  translation_key="target_ratio",
+  ...
+)
+```
+
+Notes:
+
+- `name=` is the most deterministic way to force UI label text.
+- `translation_key=` can also provide labels via `strings.json`/translations, but cached entity names may still show old values until entity registry entries are refreshed.
+
+After changing labels:
+
+1. Deploy updated core integration files to `/config/custom_components/matter`.
+2. Restart HA Core.
+3. If names do not change, remove/re-add the affected entities (or re-add the Matter integration) so entity registry picks up updated names.
+
 Hook-safe implementation notes from this session:
 
 - In core integration code, do not add `version` to `homeassistant/components/matter/manifest.json`; this fails `hassfest` for built-in integrations.
@@ -660,6 +693,7 @@ An executable helper script is available in this repo:
 
 - `script/matter_gep_addon_sync_build.sh`
 - `script/matter_gep_addon_sync_restart.sh`
+- `script/matter_gep_deploy_remote.sh`
 
 What it does:
 
@@ -673,7 +707,7 @@ Required environment variables:
 
 - `HA_USER`
 - `HA_HOST`
-- Optional: `HA_SSH_PORT` (defaults to `22`)
+- Optional: `HA_SSH_PORT` (defaults to `22222` in your environment)
 
 Usage from devcontainer:
 
@@ -681,7 +715,7 @@ Usage from devcontainer:
 cd /workspaces/homeassistant-core
 export HA_USER=root
 export HA_HOST=<your-ha-host-or-ip>
-export HA_SSH_PORT=22
+export HA_SSH_PORT=22222
 
 ./script/matter_gep_addon_sync_build.sh
 ```
@@ -694,7 +728,7 @@ Fast non-destructive inner loop:
 cd /workspaces/homeassistant-core
 export HA_USER=root
 export HA_HOST=<your-ha-host-or-ip>
-export HA_SSH_PORT=22
+export HA_SSH_PORT=22222
 
 ./script/matter_gep_addon_sync_restart.sh
 ```
@@ -706,6 +740,33 @@ export HA_SSH_PORT=22
 3. Rebuilds and restarts `local_matter_server_gep` if already installed.
 4. Installs and starts `local_matter_server_gep` if not installed.
 5. Tails add-on logs.
+
+Full deploy to another machine (add-on + core custom component):
+
+```bash
+cd /workspaces/homeassistant-core
+export HA_USER=root
+export HA_HOST=<your-ha-host-or-ip>
+export HA_SSH_PORT=22222
+
+./script/matter_gep_deploy_remote.sh
+```
+
+`matter_gep_deploy_remote.sh` behavior:
+
+1. Syncs add-on source from `homeassistant-addons/matter_server_gep` to `/addons/local/matter_server_gep` on HA host.
+2. Rebuilds/restarts `local_matter_server_gep` and stops `core_matter_server`.
+3. Syncs core integration from `homeassistant/components/matter` to `/config/custom_components/matter`.
+4. Injects `"version": "0.0.1"` into deployed custom-components manifest.
+5. Restarts HA Core and tails core/add-on logs.
+
+Optional overrides for non-default local paths:
+
+```bash
+export CORE_REPO_DIR=/path/to/homeassistant-core
+export ADDON_REPO_DIR=/path/to/homeassistant-addons
+./script/matter_gep_deploy_remote.sh
+```
 
 ## 17) Git Remote and Push Workflow (Core + Add-ons)
 
