@@ -5,7 +5,8 @@ from typing import Final
 
 from chip.clusters import Objects as clusters
 
-ADDON_SLUG = "core_matter_server"
+# Use the local custom Matter Server add-on slug in this branch.
+ADDON_SLUG = "local_matter_server_gep"
 
 CONF_INTEGRATION_CREATED_ADDON = "integration_created_addon"
 CONF_USE_ADDON = "use_addon"

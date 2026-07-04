@@ -19,16 +19,26 @@ from homeassistant.const import (
     EntityCategory,
     Platform,
     UnitOfLength,
-    UnitOfRatio,
     UnitOfTemperature,
     UnitOfTime,
+    UnitOfVolumeFlowRate,
 )
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
+from .custom_clusters import GepCustomCluster
 from .entity import MatterEntity, MatterEntityDescription
 from .helpers import MatterConfigEntry
 from .models import MatterDiscoverySchema
+
+try:
+    from homeassistant.const import UnitOfRatio
+except ImportError:
+    from homeassistant.const import PERCENTAGE
+
+    UNIT_OF_RATIO_PERCENTAGE = PERCENTAGE
+else:
+    UNIT_OF_RATIO_PERCENTAGE = UnitOfRatio.PERCENTAGE
 
 
 async def async_setup_entry(
@@ -271,6 +281,30 @@ DISCOVERY_SCHEMAS = [
     MatterDiscoverySchema(
         platform=Platform.NUMBER,
         entity_description=MatterNumberEntityDescription(
+            key="GepCustomClusterTargetFlowRate",
+            translation_key="target_flow_rate",
+            native_step=0.1,
+            native_unit_of_measurement=UnitOfVolumeFlowRate.MILLILITERS_PER_SECOND,
+            ha_to_device=float,
+        ),
+        entity_class=MatterNumber,
+        required_attributes=(GepCustomCluster.Attributes.TargetFlowRate,),
+    ),
+    MatterDiscoverySchema(
+        platform=Platform.NUMBER,
+        entity_description=MatterNumberEntityDescription(
+            key="GepCustomClusterTargetRatio",
+            translation_key="target_ratio",
+            native_step=0.1,
+            native_unit_of_measurement=UNIT_OF_RATIO_PERCENTAGE,
+            ha_to_device=float,
+        ),
+        entity_class=MatterNumber,
+        required_attributes=(GepCustomCluster.Attributes.TargetRatio,),
+    ),
+    MatterDiscoverySchema(
+        platform=Platform.NUMBER,
+        entity_description=MatterNumberEntityDescription(
             key="EveWeatherAltitude",
             device_class=NumberDeviceClass.DISTANCE,
             entity_category=EntityCategory.CONFIG,
@@ -354,7 +388,7 @@ DISCOVERY_SCHEMAS = [
         platform=Platform.NUMBER,
         entity_description=MatterNumberEntityDescription(
             key="pump_setpoint",
-            native_unit_of_measurement=UnitOfRatio.PERCENTAGE,
+            native_unit_of_measurement=UNIT_OF_RATIO_PERCENTAGE,
             translation_key="pump_setpoint",
             native_max_value=100,
             native_min_value=0.5,
@@ -516,7 +550,7 @@ DISCOVERY_SCHEMAS = [
         entity_description=MatterRangeNumberEntityDescription(
             key="speaker_setpoint",
             translation_key="speaker_setpoint",
-            native_unit_of_measurement=UnitOfRatio.PERCENTAGE,
+            native_unit_of_measurement=UNIT_OF_RATIO_PERCENTAGE,
             command=lambda value: clusters.LevelControl.Commands.MoveToLevel(
                 level=int(value)
             ),

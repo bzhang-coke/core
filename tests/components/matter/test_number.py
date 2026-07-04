@@ -10,6 +10,7 @@ from matter_server.common.helpers.util import create_attribute_path_from_attribu
 import pytest
 from syrupy.assertion import SnapshotAssertion
 
+from homeassistant.components.matter.custom_clusters import GepCustomCluster
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
@@ -161,6 +162,66 @@ async def test_eve_weather_sensor_altitude(
             attribute=custom_clusters.EveCluster.Attributes.Altitude,
         ),
         value=500,
+    )
+
+
+@pytest.mark.parametrize("node_fixture", ["mock_gep_water_valve"])
+async def test_gep_custom_cluster_numbers(
+    hass: HomeAssistant,
+    entity_registry: er.EntityRegistry,
+    matter_client: MagicMock,
+    matter_node: MatterNode,
+) -> None:
+    """Test writable numbers created from GEP custom cluster."""
+    target_flow_entity_id = next(
+        entry.entity_id
+        for entry in entity_registry.entities.values()
+        if entry.unique_id.endswith(f"-{GepCustomCluster.id}-0")
+    )
+    target_ratio_entity_id = next(
+        entry.entity_id
+        for entry in entity_registry.entities.values()
+        if entry.unique_id.endswith(f"-{GepCustomCluster.id}-2")
+    )
+
+    state = hass.states.get(target_flow_entity_id)
+    assert state
+    assert state.state == "1.5"
+
+    state = hass.states.get(target_ratio_entity_id)
+    assert state
+    assert state.state == "65.0"
+
+    set_node_attribute(matter_node, 1, GepCustomCluster.id, 0x0000, 3.2)
+    set_node_attribute(matter_node, 1, GepCustomCluster.id, 0x0002, 72.5)
+    await trigger_subscription_callback(hass, matter_client)
+
+    state = hass.states.get(target_flow_entity_id)
+    assert state
+    assert state.state == "3.2"
+
+    state = hass.states.get(target_ratio_entity_id)
+    assert state
+    assert state.state == "72.5"
+
+    await hass.services.async_call(
+        "number",
+        "set_value",
+        {
+            "entity_id": target_flow_entity_id,
+            "value": 4.4,
+        },
+        blocking=True,
+    )
+
+    assert matter_client.write_attribute.call_count == 1
+    assert matter_client.write_attribute.call_args_list[0] == call(
+        node_id=matter_node.node_id,
+        attribute_path=create_attribute_path_from_attribute(
+            endpoint_id=1,
+            attribute=GepCustomCluster.Attributes.TargetFlowRate,
+        ),
+        value=4.4,
     )
 
 

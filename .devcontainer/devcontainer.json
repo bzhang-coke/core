@@ -18,6 +18,9 @@
     "--security-opt",
     "label=disable"
   ],
+  "mounts": [
+    "source=/Users/O28845/homeassistant-addons,target=/workspaces/homeassistant-addons,type=bind,consistency=cached"
+  ],
   "customizations": {
     "vscode": {
       "extensions": [

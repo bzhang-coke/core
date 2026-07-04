@@ -42,6 +42,8 @@ def get_matter(hass: HomeAssistant) -> MatterAdapter:
     # Shall we support connecting to multiple servers in the client or by
     # config entries? In case of the config entry we need to fix this.
     entries: list[MatterConfigEntry] = hass.config_entries.async_loaded_entries(DOMAIN)
+    if not entries:
+        raise HomeAssistantError("Matter integration is not loaded")
     return entries[0].runtime_data.adapter
 
 

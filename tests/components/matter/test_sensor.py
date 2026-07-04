@@ -8,6 +8,7 @@ from matter_server.client.models.node import MatterNode
 import pytest
 from syrupy.assertion import SnapshotAssertion
 
+from homeassistant.components.matter.custom_clusters import GepCustomCluster
 from homeassistant.const import STATE_UNAVAILABLE, EntityCategory, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
@@ -310,6 +311,60 @@ async def test_eve_weather_sensor_custom_cluster(
     state = hass.states.get("sensor.eve_weather_pressure")
     assert state
     assert state.state == "800.0"
+
+
+@pytest.mark.parametrize("node_fixture", ["mock_gep_water_valve"])
+async def test_gep_custom_cluster_sensors(
+    hass: HomeAssistant,
+    entity_registry: er.EntityRegistry,
+    matter_client: MagicMock,
+    matter_node: MatterNode,
+) -> None:
+    """Test read-only sensors created from GEP custom cluster."""
+    current_flow_entity_id = next(
+        entry.entity_id
+        for entry in entity_registry.entities.values()
+        if entry.unique_id.endswith(f"-{GepCustomCluster.id}-1")
+    )
+    current_ratio_entity_id = next(
+        entry.entity_id
+        for entry in entity_registry.entities.values()
+        if entry.unique_id.endswith(f"-{GepCustomCluster.id}-3")
+    )
+    lever_press_count_entity_id = next(
+        entry.entity_id
+        for entry in entity_registry.entities.values()
+        if entry.unique_id.endswith(f"-{GepCustomCluster.id}-4")
+    )
+
+    state = hass.states.get(current_flow_entity_id)
+    assert state
+    assert state.state == "1.25"
+
+    state = hass.states.get(current_ratio_entity_id)
+    assert state
+    assert state.state == "60.0"
+
+    state = hass.states.get(lever_press_count_entity_id)
+    assert state
+    assert state.state == "2"
+
+    set_node_attribute(matter_node, 1, GepCustomCluster.id, 0x0001, 2.75)
+    set_node_attribute(matter_node, 1, GepCustomCluster.id, 0x0003, 70.0)
+    set_node_attribute(matter_node, 1, GepCustomCluster.id, 0x0004, 5)
+    await trigger_subscription_callback(hass, matter_client)
+
+    state = hass.states.get(current_flow_entity_id)
+    assert state
+    assert state.state == "2.75"
+
+    state = hass.states.get(current_ratio_entity_id)
+    assert state
+    assert state.state == "70.0"
+
+    state = hass.states.get(lever_press_count_entity_id)
+    assert state
+    assert state.state == "5"
 
 
 @pytest.mark.parametrize("node_fixture", ["air_quality_sensor"])

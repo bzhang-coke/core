@@ -277,6 +277,12 @@
       "speaker_setpoint": {
         "name": "Volume"
       },
+      "target_flow_rate": {
+        "name": "Target flow rate"
+      },
+      "target_ratio": {
+        "name": "Target ratio"
+      },
       "temperature_offset": {
         "name": "Temperature offset"
       },
@@ -438,8 +444,14 @@
           "warning": "Warning"
         }
       },
+      "current_flow_rate": {
+        "name": "Current flow rate"
+      },
       "current_phase": {
         "name": "Current phase"
+      },
+      "current_ratio": {
+        "name": "Current ratio"
       },
       "door_closed_events": {
         "name": "Door closed events"
@@ -531,6 +543,9 @@
       },
       "hepa_filter_condition": {
         "name": "HEPA filter condition"
+      },
+      "lever_press_count": {
+        "name": "Lever press count"
       },
       "nitrogen_dioxide": {
         "name": "[%key:component::sensor::entity_component::nitrogen_dioxide::name%]"

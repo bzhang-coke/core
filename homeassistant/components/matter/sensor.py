@@ -23,18 +23,17 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.const import (
     LIGHT_LUX,
+    PERCENTAGE,
     REVOLUTIONS_PER_MINUTE,
     SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
     EntityCategory,
     Platform,
     UnitOfApparentPower,
-    UnitOfDensity,
     UnitOfElectricCurrent,
     UnitOfElectricPotential,
     UnitOfEnergy,
     UnitOfPower,
     UnitOfPressure,
-    UnitOfRatio,
     UnitOfReactivePower,
     UnitOfTemperature,
     UnitOfTime,
@@ -46,9 +45,30 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.util import dt as dt_util, slugify
 
 from .const import CONCENTRATION_BECQUERELS_PER_CUBIC_METER
+from .custom_clusters import GepCustomCluster
 from .entity import MatterEntity, MatterEntityDescription
 from .helpers import MatterConfigEntry
 from .models import MatterDiscoverySchema
+
+try:
+    from homeassistant.const import UnitOfRatio
+except ImportError:
+    UNIT_OF_RATIO_PERCENTAGE = PERCENTAGE
+    UNIT_OF_RATIO_PARTS_PER_MILLION = "ppm"
+else:
+    UNIT_OF_RATIO_PERCENTAGE = UnitOfRatio.PERCENTAGE
+    UNIT_OF_RATIO_PARTS_PER_MILLION = UnitOfRatio.PARTS_PER_MILLION
+
+
+try:
+    from homeassistant.const import UnitOfDensity
+except ImportError:
+    UNIT_OF_DENSITY_MICROGRAMS_PER_CUBIC_METER = "\u03bcg/m\u00b3"
+else:
+    UNIT_OF_DENSITY_MICROGRAMS_PER_CUBIC_METER = (
+        UnitOfDensity.MICROGRAMS_PER_CUBIC_METER
+    )
+
 
 AIR_QUALITY_MAP = {
     clusters.AirQuality.Enums.AirQualityEnum.kExtremelyPoor: "extremely_poor",
@@ -430,6 +450,38 @@ DISCOVERY_SCHEMAS = [
     MatterDiscoverySchema(
         platform=Platform.SENSOR,
         entity_description=MatterSensorEntityDescription(
+            key="GepCustomClusterCurrentFlowRate",
+            translation_key="current_flow_rate",
+            native_unit_of_measurement=UnitOfVolumeFlowRate.MILLILITERS_PER_SECOND,
+            state_class=SensorStateClass.MEASUREMENT,
+        ),
+        entity_class=MatterSensor,
+        required_attributes=(GepCustomCluster.Attributes.CurrentFlowRate,),
+    ),
+    MatterDiscoverySchema(
+        platform=Platform.SENSOR,
+        entity_description=MatterSensorEntityDescription(
+            key="GepCustomClusterCurrentRatio",
+            translation_key="current_ratio",
+            native_unit_of_measurement=UNIT_OF_RATIO_PERCENTAGE,
+            state_class=SensorStateClass.MEASUREMENT,
+        ),
+        entity_class=MatterSensor,
+        required_attributes=(GepCustomCluster.Attributes.CurrentRatio,),
+    ),
+    MatterDiscoverySchema(
+        platform=Platform.SENSOR,
+        entity_description=MatterSensorEntityDescription(
+            key="GepCustomClusterLeverPressCount",
+            translation_key="lever_press_count",
+            state_class=SensorStateClass.TOTAL_INCREASING,
+        ),
+        entity_class=MatterSensor,
+        required_attributes=(GepCustomCluster.Attributes.LeverPressCount,),
+    ),
+    MatterDiscoverySchema(
+        platform=Platform.SENSOR,
+        entity_description=MatterSensorEntityDescription(
             key="FlowSensor",
             native_unit_of_measurement=UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
             translation_key="flow",
@@ -443,7 +495,7 @@ DISCOVERY_SCHEMAS = [
         platform=Platform.SENSOR,
         entity_description=MatterSensorEntityDescription(
             key="HumiditySensor",
-            native_unit_of_measurement=UnitOfRatio.PERCENTAGE,
+            native_unit_of_measurement=UNIT_OF_RATIO_PERCENTAGE,
             device_class=SensorDeviceClass.HUMIDITY,
             device_to_ha=lambda x: x / HUMIDITY_SCALING_FACTOR,
             state_class=SensorStateClass.MEASUREMENT,
@@ -458,7 +510,7 @@ DISCOVERY_SCHEMAS = [
         platform=Platform.SENSOR,
         entity_description=MatterSensorEntityDescription(
             key="SoilMoistureSensor",
-            native_unit_of_measurement=UnitOfRatio.PERCENTAGE,
+            native_unit_of_measurement=UNIT_OF_RATIO_PERCENTAGE,
             device_class=SensorDeviceClass.MOISTURE,
             state_class=SensorStateClass.MEASUREMENT,
         ),
@@ -483,7 +535,7 @@ DISCOVERY_SCHEMAS = [
         platform=Platform.SENSOR,
         entity_description=MatterSensorEntityDescription(
             key="PowerSource",
-            native_unit_of_measurement=UnitOfRatio.PERCENTAGE,
+            native_unit_of_measurement=UNIT_OF_RATIO_PERCENTAGE,
             device_class=SensorDeviceClass.BATTERY,
             entity_category=EntityCategory.DIAGNOSTIC,
             # value has double precision
@@ -624,7 +676,7 @@ DISCOVERY_SCHEMAS = [
         entity_description=MatterSensorEntityDescription(
             key="EveThermoValvePosition",
             translation_key="valve_position",
-            native_unit_of_measurement=UnitOfRatio.PERCENTAGE,
+            native_unit_of_measurement=UNIT_OF_RATIO_PERCENTAGE,
         ),
         entity_class=MatterSensor,
         required_attributes=(EveCluster.Attributes.ValvePosition,),
@@ -657,7 +709,7 @@ DISCOVERY_SCHEMAS = [
         platform=Platform.SENSOR,
         entity_description=MatterSensorEntityDescription(
             key="CarbonDioxideSensor",
-            native_unit_of_measurement=UnitOfRatio.PARTS_PER_MILLION,
+            native_unit_of_measurement=UNIT_OF_RATIO_PARTS_PER_MILLION,
             device_class=SensorDeviceClass.CO2,
             state_class=SensorStateClass.MEASUREMENT,
         ),
@@ -670,7 +722,7 @@ DISCOVERY_SCHEMAS = [
         platform=Platform.SENSOR,
         entity_description=MatterSensorEntityDescription(
             key="TotalVolatileOrganicCompoundsSensor",
-            native_unit_of_measurement=UnitOfRatio.PARTS_PER_MILLION,
+            native_unit_of_measurement=UNIT_OF_RATIO_PARTS_PER_MILLION,
             device_class=SensorDeviceClass.VOLATILE_ORGANIC_COMPOUNDS_PARTS,
             state_class=SensorStateClass.MEASUREMENT,
         ),
@@ -698,7 +750,7 @@ DISCOVERY_SCHEMAS = [
         platform=Platform.SENSOR,
         entity_description=MatterSensorEntityDescription(
             key="PM1Sensor",
-            native_unit_of_measurement=UnitOfDensity.MICROGRAMS_PER_CUBIC_METER,
+            native_unit_of_measurement=UNIT_OF_DENSITY_MICROGRAMS_PER_CUBIC_METER,
             device_class=SensorDeviceClass.PM1,
             state_class=SensorStateClass.MEASUREMENT,
         ),
@@ -711,7 +763,7 @@ DISCOVERY_SCHEMAS = [
         platform=Platform.SENSOR,
         entity_description=MatterSensorEntityDescription(
             key="PM25Sensor",
-            native_unit_of_measurement=UnitOfDensity.MICROGRAMS_PER_CUBIC_METER,
+            native_unit_of_measurement=UNIT_OF_DENSITY_MICROGRAMS_PER_CUBIC_METER,
             device_class=SensorDeviceClass.PM25,
             state_class=SensorStateClass.MEASUREMENT,
         ),
@@ -724,7 +776,7 @@ DISCOVERY_SCHEMAS = [
         platform=Platform.SENSOR,
         entity_description=MatterSensorEntityDescription(
             key="PM10Sensor",
-            native_unit_of_measurement=UnitOfDensity.MICROGRAMS_PER_CUBIC_METER,
+            native_unit_of_measurement=UNIT_OF_DENSITY_MICROGRAMS_PER_CUBIC_METER,
             device_class=SensorDeviceClass.PM10,
             state_class=SensorStateClass.MEASUREMENT,
         ),
@@ -749,7 +801,7 @@ DISCOVERY_SCHEMAS = [
         platform=Platform.SENSOR,
         entity_description=MatterSensorEntityDescription(
             key="CarbonMonoxideSensor",
-            native_unit_of_measurement=UnitOfRatio.PARTS_PER_MILLION,
+            native_unit_of_measurement=UNIT_OF_RATIO_PARTS_PER_MILLION,
             device_class=SensorDeviceClass.CO,
             state_class=SensorStateClass.MEASUREMENT,
         ),
@@ -762,7 +814,7 @@ DISCOVERY_SCHEMAS = [
         platform=Platform.SENSOR,
         entity_description=MatterSensorEntityDescription(
             key="NitrogenDioxideSensor",
-            native_unit_of_measurement=UnitOfRatio.PARTS_PER_MILLION,
+            native_unit_of_measurement=UNIT_OF_RATIO_PARTS_PER_MILLION,
             device_class=SensorDeviceClass.NITROGEN_DIOXIDE,
             state_class=SensorStateClass.MEASUREMENT,
         ),
@@ -775,7 +827,7 @@ DISCOVERY_SCHEMAS = [
         platform=Platform.SENSOR,
         entity_description=MatterSensorEntityDescription(
             key="OzoneConcentrationSensor",
-            native_unit_of_measurement=UnitOfRatio.PARTS_PER_MILLION,
+            native_unit_of_measurement=UNIT_OF_RATIO_PARTS_PER_MILLION,
             device_class=SensorDeviceClass.OZONE,
             state_class=SensorStateClass.MEASUREMENT,
         ),
@@ -801,7 +853,7 @@ DISCOVERY_SCHEMAS = [
         platform=Platform.SENSOR,
         entity_description=MatterSensorEntityDescription(
             key="HepaFilterCondition",
-            native_unit_of_measurement=UnitOfRatio.PERCENTAGE,
+            native_unit_of_measurement=UNIT_OF_RATIO_PERCENTAGE,
             state_class=SensorStateClass.MEASUREMENT,
             translation_key="hepa_filter_condition",
         ),
@@ -812,7 +864,7 @@ DISCOVERY_SCHEMAS = [
         platform=Platform.SENSOR,
         entity_description=MatterSensorEntityDescription(
             key="ActivatedCarbonFilterCondition",
-            native_unit_of_measurement=UnitOfRatio.PERCENTAGE,
+            native_unit_of_measurement=UNIT_OF_RATIO_PERCENTAGE,
             state_class=SensorStateClass.MEASUREMENT,
             translation_key="activated_carbon_filter_condition",
         ),
@@ -1296,7 +1348,7 @@ DISCOVERY_SCHEMAS = [
         entity_description=MatterSensorEntityDescription(
             key="ThermostatPIHeatingDemand",
             translation_key="pi_heating_demand",
-            native_unit_of_measurement=UnitOfRatio.PERCENTAGE,
+            native_unit_of_measurement=UNIT_OF_RATIO_PERCENTAGE,
             entity_category=EntityCategory.DIAGNOSTIC,
         ),
         entity_class=MatterSensor,
@@ -1378,7 +1430,7 @@ DISCOVERY_SCHEMAS = [
             entity_registry_enabled_default=False,
             translation_key="window_covering_target_position",
             device_to_ha=lambda x: round((10000 - x) / 100),
-            native_unit_of_measurement=UnitOfRatio.PERCENTAGE,
+            native_unit_of_measurement=UNIT_OF_RATIO_PERCENTAGE,
         ),
         entity_class=MatterSensor,
         required_attributes=(
@@ -1463,7 +1515,7 @@ DISCOVERY_SCHEMAS = [
         entity_description=MatterSensorEntityDescription(
             key="EnergyEvseStateOfCharge",
             translation_key="evse_soc",
-            native_unit_of_measurement=UnitOfRatio.PERCENTAGE,
+            native_unit_of_measurement=UNIT_OF_RATIO_PERCENTAGE,
             device_class=SensorDeviceClass.BATTERY,
             state_class=SensorStateClass.MEASUREMENT,
         ),
@@ -1487,7 +1539,7 @@ DISCOVERY_SCHEMAS = [
         entity_description=MatterSensorEntityDescription(
             key="WaterHeaterManagementTankPercentage",
             translation_key="tank_percentage",
-            native_unit_of_measurement=UnitOfRatio.PERCENTAGE,
+            native_unit_of_measurement=UNIT_OF_RATIO_PERCENTAGE,
             state_class=SensorStateClass.MEASUREMENT,
         ),
         entity_class=MatterSensor,
