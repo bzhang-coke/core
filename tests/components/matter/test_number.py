@@ -3,6 +3,7 @@
 from unittest.mock import MagicMock, call
 
 from chip.clusters import Objects as clusters
+from chip.clusters.ClusterObjects import ClusterAttributeDescriptor
 from matter_server.client.models.node import MatterNode
 from matter_server.common import custom_clusters
 from matter_server.common.errors import MatterError
@@ -10,7 +11,11 @@ from matter_server.common.helpers.util import create_attribute_path_from_attribu
 import pytest
 from syrupy.assertion import SnapshotAssertion
 
-from homeassistant.components.matter.custom_clusters import GepCustomCluster
+from homeassistant.components.matter.custom_clusters import (
+    GepChannelCalibrationCluster,
+    GepChannelConfigurationCluster,
+    GepCustomCluster,
+)
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
@@ -222,6 +227,128 @@ async def test_gep_custom_cluster_numbers(
             attribute=GepCustomCluster.Attributes.TargetFlowRate,
         ),
         value=4.4,
+    )
+
+
+@pytest.mark.parametrize("node_fixture", ["mock_gep_water_valve"])
+async def test_gep_channel_configuration_numbers(
+    hass: HomeAssistant,
+    entity_registry: er.EntityRegistry,
+    matter_client: MagicMock,
+    matter_node: MatterNode,
+) -> None:
+    """Test writable channel configuration numbers."""
+    entity_id = next(
+        entry.entity_id
+        for entry in entity_registry.entities.values()
+        if entry.unique_id.endswith(
+            f"-2-GepChannelConfigurationViscosityParameter-"
+            f"{GepChannelConfigurationCluster.id}-4353"
+        )
+    )
+    state = hass.states.get(entity_id)
+    assert state
+    assert state.state == "1.5"
+    assert "Channel 1" in state.name
+
+    await hass.services.async_call(
+        "number",
+        "set_value",
+        {"entity_id": entity_id, "value": 2.75},
+        blocking=True,
+    )
+
+    assert matter_client.write_attribute.call_args == call(
+        node_id=matter_node.node_id,
+        attribute_path=create_attribute_path_from_attribute(
+            endpoint_id=2,
+            attribute=GepChannelConfigurationCluster.Attributes.ViscosityParameter,
+        ),
+        value=2.75,
+    )
+
+
+@pytest.mark.parametrize("node_fixture", ["mock_gep_water_valve"])
+@pytest.mark.parametrize(
+    ("attribute", "value", "expected_value"),
+    [
+        pytest.param(
+            GepChannelCalibrationCluster.Attributes.DeltaPressureCorrection,
+            -2.25,
+            -2.25,
+            id="delta-pressure-correction",
+        ),
+        pytest.param(
+            GepChannelCalibrationCluster.Attributes.TemperatureCorrection,
+            3.25,
+            3.25,
+            id="temperature-correction",
+        ),
+        pytest.param(
+            GepChannelCalibrationCluster.Attributes.FlowmeterCalibration,
+            1.75,
+            1.75,
+            id="flowmeter-calibration",
+        ),
+        pytest.param(
+            GepChannelCalibrationCluster.Attributes.ActuatorTuningMinimum,
+            120,
+            120,
+            id="actuator-tuning-minimum",
+        ),
+        pytest.param(
+            GepChannelCalibrationCluster.Attributes.ActuatorTuningMaximum,
+            880,
+            880,
+            id="actuator-tuning-maximum",
+        ),
+        pytest.param(
+            GepChannelCalibrationCluster.Attributes.ActuatorTuningIdle,
+            55,
+            55,
+            id="actuator-tuning-idle",
+        ),
+        pytest.param(
+            GepChannelCalibrationCluster.Attributes.ActuatorMagnetPolarity,
+            0,
+            0,
+            id="actuator-magnet-polarity",
+        ),
+    ],
+)
+async def test_gep_channel_calibration_numbers(
+    hass: HomeAssistant,
+    entity_registry: er.EntityRegistry,
+    matter_client: MagicMock,
+    matter_node: MatterNode,
+    attribute: type[ClusterAttributeDescriptor],
+    value: float,
+    expected_value: float,
+) -> None:
+    """Test writable scalar channel calibration attributes."""
+    entity_id = next(
+        entry.entity_id
+        for entry in entity_registry.entities.values()
+        if entry.unique_id.endswith(
+            f"-2-GepChannelCalibration{attribute.__name__}-"
+            f"{GepChannelCalibrationCluster.id}-{attribute.attribute_id}"
+        )
+    )
+
+    await hass.services.async_call(
+        "number",
+        "set_value",
+        {"entity_id": entity_id, "value": value},
+        blocking=True,
+    )
+
+    assert matter_client.write_attribute.call_args == call(
+        node_id=matter_node.node_id,
+        attribute_path=create_attribute_path_from_attribute(
+            endpoint_id=2,
+            attribute=attribute,
+        ),
+        value=expected_value,
     )
 
 

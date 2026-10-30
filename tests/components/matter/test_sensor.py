@@ -8,10 +8,17 @@ from matter_server.client.models.node import MatterNode
 import pytest
 from syrupy.assertion import SnapshotAssertion
 
-from homeassistant.components.matter.custom_clusters import GepCustomCluster
+from homeassistant.components.matter.custom_clusters import (
+    GepChannelConfigurationCluster,
+    GepChannelTelemetryCluster,
+    GepCustomCluster,
+)
+from homeassistant.components.matter.entity import MatterEntity
+from homeassistant.components.matter.helpers import get_node_from_device_entry
 from homeassistant.const import STATE_UNAVAILABLE, EntityCategory, Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.helpers.entity_component import DATA_INSTANCES
 
 from .common import (
     set_node_attribute,
@@ -365,6 +372,91 @@ async def test_gep_custom_cluster_sensors(
     state = hass.states.get(lever_press_count_entity_id)
     assert state
     assert state.state == "5"
+
+
+@pytest.mark.parametrize("node_fixture", ["mock_gep_water_valve"])
+async def test_gep_channel_sensors(
+    hass: HomeAssistant,
+    device_registry: dr.DeviceRegistry,
+    entity_registry: er.EntityRegistry,
+    matter_client: MagicMock,
+    matter_node: MatterNode,
+) -> None:
+    """Test channel telemetry and list diagnostic sensors."""
+    flowrate_entity_id = next(
+        entry.entity_id
+        for entry in entity_registry.entities.values()
+        if entry.unique_id.endswith(
+            f"-3-GepChannelFlowrate-{GepChannelTelemetryCluster.id}-12548"
+        )
+    )
+    flowrate_state = hass.states.get(flowrate_entity_id)
+    assert flowrate_state
+    assert flowrate_state.state == "310"
+    assert "Channel 2" in flowrate_state.name
+    assert "(3)" not in flowrate_state.name
+    flowrate_entry = entity_registry.async_get(flowrate_entity_id)
+    assert flowrate_entry
+    assert flowrate_entry.device_id
+    assert flowrate_entry.original_name
+    assert "(3)" not in flowrate_entry.original_name
+    channel_2_device = device_registry.async_get(flowrate_entry.device_id)
+    assert channel_2_device
+    assert channel_2_device.name == "Channel 2"
+    assert channel_2_device.via_device_id
+    assert get_node_from_device_entry(hass, channel_2_device) is matter_node
+
+    parent_device = device_registry.async_get(channel_2_device.via_device_id)
+    assert parent_device
+    flowrate_entity = hass.data[DATA_INSTANCES][Platform.SENSOR].get_entity(
+        flowrate_entity_id
+    )
+    assert isinstance(flowrate_entity, MatterEntity)
+    flowrate_entity.registry_entry = entity_registry.async_update_entity(
+        flowrate_entity_id,
+        device_id=parent_device.id,
+        original_name="Flow rate (3)",
+    )
+    flowrate_entity._migrate_channel_device()
+    migrated_entry = entity_registry.async_get(flowrate_entity_id)
+    assert migrated_entry
+    assert migrated_entry.device_id == channel_2_device.id
+    assert migrated_entry.original_name == "Flow rate"
+
+    parameters_entity_id = next(
+        entry.entity_id
+        for entry in entity_registry.entities.values()
+        if entry.unique_id.endswith(
+            f"-2-GepChannelRegressionModelParameters-"
+            f"{GepChannelConfigurationCluster.id}-4354"
+        )
+    )
+    parameters_state = hass.states.get(parameters_entity_id)
+    assert parameters_state
+    assert parameters_state.state == "3"
+    assert parameters_state.attributes["values"] == [1.0, 2.0, 3.0]
+    parameters_entry = entity_registry.async_get(parameters_entity_id)
+    assert parameters_entry
+    assert parameters_entry.device_id
+    channel_1_device = device_registry.async_get(parameters_entry.device_id)
+    assert channel_1_device
+    assert channel_1_device.name == "Channel 1"
+    assert channel_1_device.via_device_id == channel_2_device.via_device_id
+    assert channel_1_device.id != channel_2_device.id
+
+    set_node_attribute(
+        matter_node,
+        2,
+        GepChannelConfigurationCluster.id,
+        0x1102,
+        [4.0, 5.0],
+    )
+    await trigger_subscription_callback(hass, matter_client)
+
+    parameters_state = hass.states.get(parameters_entity_id)
+    assert parameters_state
+    assert parameters_state.state == "2"
+    assert parameters_state.attributes["values"] == [4.0, 5.0]
 
 
 @pytest.mark.parametrize("node_fixture", ["air_quality_sensor"])

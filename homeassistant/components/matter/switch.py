@@ -17,6 +17,7 @@ from homeassistant.const import EntityCategory, Platform
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
+from .custom_clusters import GepDeviceConfigurationCluster
 from .entity import MatterEntity, MatterEntityDescription
 from .helpers import MatterConfigEntry
 from .models import MatterDiscoverySchema
@@ -185,6 +186,26 @@ class MatterNumericSwitch(MatterSwitch):
 
 # Discovery schema(s) to map Matter Attributes to HA entities
 DISCOVERY_SCHEMAS = [
+    MatterDiscoverySchema(
+        platform=Platform.SWITCH,
+        entity_description=MatterNumericSwitchEntityDescription(
+            key="GepDeviceConfigurationBlocked",
+            translation_key="blocked",
+        ),
+        entity_class=MatterNumericSwitch,
+        required_attributes=(GepDeviceConfigurationCluster.Attributes.Blocked,),
+    ),
+    MatterDiscoverySchema(
+        platform=Platform.SWITCH,
+        entity_description=MatterNumericSwitchEntityDescription(
+            key="GepDeviceConfigurationDispenseWaterOnly",
+            translation_key="dispense_water_only",
+        ),
+        entity_class=MatterNumericSwitch,
+        required_attributes=(
+            GepDeviceConfigurationCluster.Attributes.DispenseWaterOnly,
+        ),
+    ),
     MatterDiscoverySchema(
         platform=Platform.SWITCH,
         entity_description=MatterSwitchEntityDescription(

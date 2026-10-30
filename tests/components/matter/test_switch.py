@@ -10,6 +10,9 @@ from matter_server.common.helpers.util import create_attribute_path_from_attribu
 import pytest
 from syrupy.assertion import SnapshotAssertion
 
+from homeassistant.components.matter.custom_clusters import (
+    GepDeviceConfigurationCluster,
+)
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
@@ -167,6 +170,39 @@ async def test_numeric_switch(
             attribute=clusters.ThermostatUserInterfaceConfiguration.Attributes.KeypadLockout,
         ),
         value=0,
+    )
+
+
+@pytest.mark.parametrize("node_fixture", ["mock_gep_water_valve"])
+async def test_gep_configuration_switches(
+    hass: HomeAssistant,
+    entity_registry: er.EntityRegistry,
+    matter_client: MagicMock,
+    matter_node: MatterNode,
+) -> None:
+    """Test writable boolean configuration switches."""
+    entity_id = next(
+        entry.entity_id
+        for entry in entity_registry.entities.values()
+        if entry.unique_id.endswith(
+            f"-GepDeviceConfigurationBlocked-{GepDeviceConfigurationCluster.id}-4096"
+        )
+    )
+    state = hass.states.get(entity_id)
+    assert state
+    assert state.state == "off"
+
+    await hass.services.async_call(
+        "switch", "turn_on", {"entity_id": entity_id}, blocking=True
+    )
+
+    assert matter_client.write_attribute.call_args == call(
+        node_id=matter_node.node_id,
+        attribute_path=create_attribute_path_from_attribute(
+            endpoint_id=1,
+            attribute=GepDeviceConfigurationCluster.Attributes.Blocked,
+        ),
+        value=True,
     )
 
 

@@ -18,7 +18,7 @@ from propcache.api import cached_property
 
 from homeassistant.core import callback
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import Entity, EntityDescription
 from homeassistant.helpers.typing import UndefinedType
@@ -58,6 +58,16 @@ VENDOR_LABELING_LIST: dict[int, dict[int, list[str] | None]] = {
         32770: ["ha_entitylabel"],
     },
 }
+
+VENDOR_ENDPOINT_DEVICE_NAMES: dict[int, dict[int, dict[int, str]]] = {
+    65521: {
+        32772: {
+            2: "Channel 1",
+            3: "Channel 2",
+        }
+    }
+}
+GEP_CHANNEL_CLUSTER_IDS = {0xFFF1FC30, 0xFFF1FC31, 0xFFF1FC32}
 
 
 def catch_matter_error[_R, **P](
@@ -107,6 +117,9 @@ class MatterEntity(Entity):
         self._entity_info = entity_info
         self.entity_description = entity_info.entity_description
         self._unsubscribes: list[Callable] = []
+        self._channel_device_info: (
+            tuple[tuple[str, str], tuple[str, str], str] | None
+        ) = None
         # for fast lookups we create a mapping to the attribute paths
         self._attributes_map: dict[type, str] = {}
         # The server info is set when the client connects to the server.
@@ -120,9 +133,24 @@ class MatterEntity(Entity):
             f"{entity_info.primary_attribute.cluster_id}-"
             f"{entity_info.primary_attribute.attribute_id}"
         )
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, f"{ID_TYPE_DEVICE_ID}_{node_device_id}")}
-        )
+        parent_identifier = (DOMAIN, f"{ID_TYPE_DEVICE_ID}_{node_device_id}")
+        if channel_name := self._get_channel_name():
+            channel_identifier = (
+                DOMAIN,
+                f"{ID_TYPE_DEVICE_ID}_{node_device_id}-channel-{endpoint.endpoint_id}",
+            )
+            self._channel_device_info = (
+                channel_identifier,
+                parent_identifier,
+                channel_name,
+            )
+            self._attr_device_info = DeviceInfo(
+                identifiers={channel_identifier},
+                name=channel_name,
+                via_device=parent_identifier,
+            )
+        else:
+            self._attr_device_info = DeviceInfo(identifiers={parent_identifier})
         self._attr_available = (
             self._endpoint.node.available and self._get_bridged_reachable()
         )
@@ -147,7 +175,8 @@ class MatterEntity(Entity):
         # by appending the text.
         if name_modifier := self._get_name_modifier():
             self._name_postfix = name_modifier
-
+        if self._channel_device_info:
+            self._name_postfix = None
         # make sure to update the attributes once
         self._update_from_device()
 
@@ -184,10 +213,51 @@ class MatterEntity(Entity):
             return found_labels[0]
         return None
 
+    def _get_channel_name(self) -> str | None:
+        """Return a vendor-specific channel device name."""
+        if (
+            self._entity_info.primary_attribute.cluster_id
+            not in GEP_CHANNEL_CLUSTER_IDS
+        ):
+            return None
+        device_info = self._endpoint.device_info
+        return (
+            VENDOR_ENDPOINT_DEVICE_NAMES.get(device_info.vendorID, {})
+            .get(device_info.productID, {})
+            .get(self._endpoint.endpoint_id)
+        )
+
+    @callback
+    def _migrate_channel_device(self) -> None:
+        """Move an existing channel entity to its child device."""
+        if (
+            not self._channel_device_info
+            or not self.registry_entry
+            or not self.registry_entry.config_entry_id
+        ):
+            return
+        channel_identifier, parent_identifier, channel_name = self._channel_device_info
+        channel_device = dr.async_get(self.hass).async_get_or_create(
+            config_entry_id=self.registry_entry.config_entry_id,
+            identifiers={channel_identifier},
+            name=channel_name,
+            via_device=parent_identifier,
+        )
+        if (
+            self.registry_entry.device_id != channel_device.id
+            or self.registry_entry.original_name != self.name
+        ):
+            self.registry_entry = er.async_get(self.hass).async_update_entity(
+                self.entity_id,
+                device_id=channel_device.id,
+                original_name=self.name,
+            )
+
     @override
     async def async_added_to_hass(self) -> None:
         """Handle being added to Home Assistant."""
         await super().async_added_to_hass()
+        self._migrate_channel_device()
 
         # Subscribe to attribute updates.
         sub_paths: list[str] = []

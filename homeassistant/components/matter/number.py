@@ -26,7 +26,12 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .custom_clusters import GepCustomCluster
+from .custom_clusters import (
+    GepChannelCalibrationCluster,
+    GepChannelConfigurationCluster,
+    GepCustomCluster,
+    GepDeviceConfigurationCluster,
+)
 from .entity import MatterEntity, MatterEntityDescription
 from .helpers import MatterConfigEntry
 from .models import MatterDiscoverySchema
@@ -303,6 +308,192 @@ DISCOVERY_SCHEMAS = [
         ),
         entity_class=MatterNumber,
         required_attributes=(GepCustomCluster.Attributes.TargetRatio,),
+    ),
+    MatterDiscoverySchema(
+        platform=Platform.NUMBER,
+        entity_description=MatterNumberEntityDescription(
+            key="GepDeviceConfigurationBeverageRatio",
+            entity_category=EntityCategory.CONFIG,
+            translation_key="beverage_ratio",
+            native_min_value=0,
+            native_max_value=100,
+            native_step=0.1,
+            native_unit_of_measurement=UNIT_OF_RATIO_PERCENTAGE,
+            mode=NumberMode.BOX,
+            ha_to_device=float,
+        ),
+        entity_class=MatterNumber,
+        required_attributes=(GepDeviceConfigurationCluster.Attributes.BeverageRatio,),
+    ),
+    MatterDiscoverySchema(
+        platform=Platform.NUMBER,
+        entity_description=MatterNumberEntityDescription(
+            key="GepDeviceConfigurationTargetBeverageFlowrate",
+            entity_category=EntityCategory.CONFIG,
+            translation_key="target_beverage_flowrate",
+            native_min_value=0,
+            native_max_value=65535,
+            native_step=1,
+            native_unit_of_measurement=UnitOfVolumeFlowRate.MILLILITERS_PER_SECOND,
+            mode=NumberMode.BOX,
+        ),
+        entity_class=MatterNumber,
+        required_attributes=(
+            GepDeviceConfigurationCluster.Attributes.TargetBeverageFlowrate,
+        ),
+    ),
+    MatterDiscoverySchema(
+        platform=Platform.NUMBER,
+        entity_description=MatterNumberEntityDescription(
+            key="GepDeviceConfigurationExternalModuleId",
+            entity_category=EntityCategory.CONFIG,
+            translation_key="external_module_id",
+            native_min_value=0,
+            native_max_value=255,
+            native_step=1,
+            mode=NumberMode.BOX,
+        ),
+        entity_class=MatterNumber,
+        required_attributes=(
+            GepDeviceConfigurationCluster.Attributes.ExternalModuleId,
+        ),
+    ),
+    MatterDiscoverySchema(
+        platform=Platform.NUMBER,
+        entity_description=MatterNumberEntityDescription(
+            key="GepChannelConfigurationFluidId",
+            entity_category=EntityCategory.CONFIG,
+            translation_key="fluid_id",
+            native_min_value=0,
+            native_max_value=255,
+            native_step=1,
+            mode=NumberMode.BOX,
+        ),
+        entity_class=MatterNumber,
+        required_attributes=(GepChannelConfigurationCluster.Attributes.FluidId,),
+        endpoint_id=(2, 3),
+    ),
+    MatterDiscoverySchema(
+        platform=Platform.NUMBER,
+        entity_description=MatterNumberEntityDescription(
+            key="GepChannelConfigurationViscosityParameter",
+            entity_category=EntityCategory.CONFIG,
+            translation_key="viscosity_parameter",
+            native_min_value=0,
+            native_max_value=65535,
+            native_step=0.1,
+            mode=NumberMode.BOX,
+            ha_to_device=float,
+        ),
+        entity_class=MatterNumber,
+        required_attributes=(
+            GepChannelConfigurationCluster.Attributes.ViscosityParameter,
+        ),
+        endpoint_id=(2, 3),
+    ),
+    MatterDiscoverySchema(
+        platform=Platform.NUMBER,
+        entity_description=MatterNumberEntityDescription(
+            key="GepChannelConfigurationFlowSetpoint",
+            entity_category=EntityCategory.CONFIG,
+            translation_key="flow_setpoint",
+            native_min_value=0,
+            native_max_value=65535,
+            native_step=1,
+            native_unit_of_measurement=UnitOfVolumeFlowRate.MILLILITERS_PER_SECOND,
+            mode=NumberMode.BOX,
+        ),
+        entity_class=MatterNumber,
+        required_attributes=(GepChannelConfigurationCluster.Attributes.FlowSetpoint,),
+        endpoint_id=(2, 3),
+    ),
+    MatterDiscoverySchema(
+        platform=Platform.NUMBER,
+        entity_description=MatterNumberEntityDescription(
+            key="GepChannelConfigurationRegressionModelId",
+            entity_category=EntityCategory.CONFIG,
+            translation_key="regression_model_id",
+            native_min_value=0,
+            native_max_value=255,
+            native_step=1,
+            mode=NumberMode.BOX,
+        ),
+        entity_class=MatterNumber,
+        required_attributes=(
+            GepChannelConfigurationCluster.Attributes.RegressionModelId,
+        ),
+        endpoint_id=(2, 3),
+    ),
+    *(
+        MatterDiscoverySchema(
+            platform=Platform.NUMBER,
+            entity_description=MatterNumberEntityDescription(
+                key=f"GepChannelCalibration{attribute.__name__}",
+                entity_category=EntityCategory.CONFIG,
+                translation_key=translation_key,
+                native_min_value=-65535,
+                native_max_value=65535,
+                native_step=0.1,
+                mode=NumberMode.BOX,
+                ha_to_device=float,
+            ),
+            entity_class=MatterNumber,
+            required_attributes=(attribute,),
+            endpoint_id=(2, 3),
+        )
+        for attribute, translation_key in (
+            (
+                GepChannelCalibrationCluster.Attributes.DeltaPressureCorrection,
+                "delta_pressure_correction",
+            ),
+            (
+                GepChannelCalibrationCluster.Attributes.TemperatureCorrection,
+                "temperature_correction",
+            ),
+            (
+                GepChannelCalibrationCluster.Attributes.FlowmeterCalibration,
+                "flowmeter_calibration",
+            ),
+        )
+    ),
+    *(
+        MatterDiscoverySchema(
+            platform=Platform.NUMBER,
+            entity_description=MatterNumberEntityDescription(
+                key=f"GepChannelCalibration{attribute.__name__}",
+                entity_category=EntityCategory.CONFIG,
+                translation_key=translation_key,
+                native_min_value=0,
+                native_max_value=maximum,
+                native_step=1,
+                mode=NumberMode.BOX,
+            ),
+            entity_class=MatterNumber,
+            required_attributes=(attribute,),
+            endpoint_id=(2, 3),
+        )
+        for attribute, translation_key, maximum in (
+            (
+                GepChannelCalibrationCluster.Attributes.ActuatorTuningMinimum,
+                "actuator_tuning_minimum",
+                65535,
+            ),
+            (
+                GepChannelCalibrationCluster.Attributes.ActuatorTuningMaximum,
+                "actuator_tuning_maximum",
+                65535,
+            ),
+            (
+                GepChannelCalibrationCluster.Attributes.ActuatorTuningIdle,
+                "actuator_tuning_idle",
+                65535,
+            ),
+            (
+                GepChannelCalibrationCluster.Attributes.ActuatorMagnetPolarity,
+                "actuator_magnet_polarity",
+                255,
+            ),
+        )
     ),
     MatterDiscoverySchema(
         platform=Platform.NUMBER,

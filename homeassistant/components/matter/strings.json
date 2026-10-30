@@ -226,20 +226,50 @@
       }
     },
     "number": {
+      "actuator_magnet_polarity": {
+        "name": "Actuator magnet polarity"
+      },
+      "actuator_tuning_idle": {
+        "name": "Actuator tuning idle"
+      },
+      "actuator_tuning_maximum": {
+        "name": "Actuator tuning maximum"
+      },
+      "actuator_tuning_minimum": {
+        "name": "Actuator tuning minimum"
+      },
       "altitude": {
         "name": "Altitude above sea level"
       },
       "auto_relock_timer": {
         "name": "Auto-relock time"
       },
+      "beverage_ratio": {
+        "name": "Beverage ratio"
+      },
       "cook_time": {
         "name": "Cooking time"
+      },
+      "delta_pressure_correction": {
+        "name": "Delta pressure correction"
       },
       "detection_delay": {
         "name": "Detection delay"
       },
       "detection_threshold": {
         "name": "Detection threshold"
+      },
+      "external_module_id": {
+        "name": "External module ID"
+      },
+      "flow_setpoint": {
+        "name": "Flow setpoint"
+      },
+      "flowmeter_calibration": {
+        "name": "Flowmeter calibration"
+      },
+      "fluid_id": {
+        "name": "Fluid ID"
       },
       "hold_time": {
         "name": "Hold time"
@@ -271,17 +301,26 @@
       "pump_setpoint": {
         "name": "Setpoint"
       },
+      "regression_model_id": {
+        "name": "Regression model ID"
+      },
       "sensitivity_level": {
         "name": "Sensitivity"
       },
       "speaker_setpoint": {
         "name": "Volume"
       },
+      "target_beverage_flowrate": {
+        "name": "Target beverage flow rate"
+      },
       "target_flow_rate": {
         "name": "Target flow rate"
       },
       "target_ratio": {
         "name": "Target ratio"
+      },
+      "temperature_correction": {
+        "name": "Temperature correction"
       },
       "temperature_offset": {
         "name": "Temperature offset"
@@ -294,6 +333,9 @@
       },
       "valve_configuration_and_control_default_open_duration": {
         "name": "Default open duration"
+      },
+      "viscosity_parameter": {
+        "name": "Viscosity parameter"
       },
       "wrong_code_entry_limit": {
         "name": "Wrong code limit"
@@ -386,6 +428,12 @@
       "active_current": {
         "name": "Active current"
       },
+      "actuations_counter": {
+        "name": "Actuations"
+      },
+      "actuator_calibration_counter": {
+        "name": "Actuator calibrations"
+      },
       "air_quality": {
         "name": "Air quality",
         "state": {
@@ -402,6 +450,33 @@
       },
       "auto_close_time": {
         "name": "Auto-close time"
+      },
+      "average_delta_pressure": {
+        "name": "Average delta pressure"
+      },
+      "average_dispensing_time": {
+        "name": "Average dispensing time"
+      },
+      "average_flowrate": {
+        "name": "Average flow rate"
+      },
+      "average_opening": {
+        "name": "Average opening"
+      },
+      "average_pressure_0": {
+        "name": "Average pressure 0"
+      },
+      "average_pressure_1": {
+        "name": "Average pressure 1"
+      },
+      "average_pwm_duty_cycle": {
+        "name": "Average PWM duty cycle"
+      },
+      "average_temperature": {
+        "name": "Average temperature"
+      },
+      "average_volume": {
+        "name": "Average volume"
       },
       "battery_charge_state": {
         "name": "Battery charge state",
@@ -423,6 +498,9 @@
       "battery_voltage": {
         "name": "Battery voltage"
       },
+      "boot_counter": {
+        "name": "Boot count"
+      },
       "boot_reason": {
         "name": "Boot reason",
         "state": {
@@ -435,6 +513,21 @@
           "unspecified": "Unspecified"
         }
       },
+      "channel_alarms": {
+        "name": "Channel alarms"
+      },
+      "channel_count": {
+        "name": "Channel count"
+      },
+      "channel_state": {
+        "name": "State"
+      },
+      "connectivity_application_version": {
+        "name": "Connectivity application version"
+      },
+      "connectivity_bootloader_version": {
+        "name": "Connectivity bootloader version"
+      },
       "contamination_state": {
         "name": "Contamination state",
         "state": {
@@ -443,6 +536,9 @@
           "normal": "[%key:common::state::normal%]",
           "warning": "Warning"
         }
+      },
+      "control_board": {
+        "name": "Control board"
       },
       "current_flow_rate": {
         "name": "Current flow rate"
@@ -453,6 +549,18 @@
       "current_ratio": {
         "name": "Current ratio"
       },
+      "data_model_version": {
+        "name": "Data model version"
+      },
+      "delta_pressure": {
+        "name": "Delta pressure"
+      },
+      "device_alarms": {
+        "name": "Device alarms"
+      },
+      "dispensing_time": {
+        "name": "Dispensing time"
+      },
       "door_closed_events": {
         "name": "Door closed events"
       },
@@ -461,6 +569,9 @@
       },
       "energy_exported": {
         "name": "Energy exported"
+      },
+      "eol_test_date": {
+        "name": "End-of-line test date"
       },
       "esa_opt_out_state": {
         "name": "Energy optimization opt-out",
@@ -538,17 +649,62 @@
       "expiry_date": {
         "name": "Expiry date"
       },
+      "external_module_parameters": {
+        "name": "External module parameters"
+      },
       "flow": {
         "name": "Flow"
+      },
+      "flowrate": {
+        "name": "Flow rate"
+      },
+      "gep_product_id": {
+        "name": "GEP product ID"
+      },
+      "gep_serial_number": {
+        "name": "GEP serial number"
       },
       "hepa_filter_condition": {
         "name": "HEPA filter condition"
       },
+      "inter_mcu_protocol_version": {
+        "name": "Inter-MCU protocol version"
+      },
       "lever_press_count": {
         "name": "Lever press count"
       },
+      "linearization_curve": {
+        "name": "Linearization curve"
+      },
+      "manufacture_date": {
+        "name": "Manufacture date"
+      },
+      "manufacture_line": {
+        "name": "Manufacture line"
+      },
+      "manufacture_lot": {
+        "name": "Manufacture lot"
+      },
+      "manufacture_plant": {
+        "name": "Manufacture plant"
+      },
+      "manufacturer_code": {
+        "name": "Manufacturer code"
+      },
+      "matter_stack_version": {
+        "name": "Matter stack version"
+      },
+      "mcu_temperature": {
+        "name": "MCU temperature"
+      },
+      "mcu_voltage": {
+        "name": "MCU voltage"
+      },
       "nitrogen_dioxide": {
         "name": "[%key:component::sensor::entity_component::nitrogen_dioxide::name%]"
+      },
+      "opening": {
+        "name": "Opening"
       },
       "operational_error": {
         "name": "Operational error",
@@ -592,6 +748,15 @@
       "pi_heating_demand": {
         "name": "Heating demand"
       },
+      "poured_channels": {
+        "name": "Poured channels"
+      },
+      "pressure_0": {
+        "name": "Pressure 0"
+      },
+      "pressure_1": {
+        "name": "Pressure 1"
+      },
       "pump_control_mode": {
         "name": "Control mode",
         "state": {
@@ -606,6 +771,9 @@
       "pump_speed": {
         "name": "Rotation speed"
       },
+      "pwm_duty_cycle": {
+        "name": "PWM duty cycle"
+      },
       "radon_concentration": {
         "name": "Radon concentration"
       },
@@ -615,11 +783,20 @@
       "reboot_count": {
         "name": "Reboot count"
       },
+      "regression_model_parameters": {
+        "name": "Regression model parameters"
+      },
       "rms_current": {
         "name": "Effective current"
       },
       "rms_voltage": {
         "name": "Effective voltage"
+      },
+      "rt_mcu_application_version": {
+        "name": "Real-time MCU application version"
+      },
+      "rt_mcu_bootloader_version": {
+        "name": "Real-time MCU bootloader version"
       },
       "switch_current_position": {
         "name": "Current switch position"
@@ -629,6 +806,9 @@
       },
       "tank_volume": {
         "name": "Tank volume"
+      },
+      "test_fixture_identifier": {
+        "name": "Test fixture identifier"
       },
       "thread_channel": {
         "name": "Thread channel"
@@ -667,6 +847,9 @@
       "voltage": {
         "name": "Voltage"
       },
+      "volume": {
+        "name": "Volume"
+      },
       "wifi_rssi": {
         "name": "Wi-Fi RSSI"
       },
@@ -680,8 +863,14 @@
       }
     },
     "switch": {
+      "blocked": {
+        "name": "Blocked"
+      },
       "child_lock": {
         "name": "Child lock"
+      },
+      "dispense_water_only": {
+        "name": "Dispense water only"
       },
       "evse_charging_switch": {
         "name": "Enable charging"

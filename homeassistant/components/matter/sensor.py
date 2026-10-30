@@ -45,7 +45,15 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.util import dt as dt_util, slugify
 
 from .const import CONCENTRATION_BECQUERELS_PER_CUBIC_METER
-from .custom_clusters import GepCustomCluster
+from .custom_clusters import (
+    GepChannelCalibrationCluster,
+    GepChannelConfigurationCluster,
+    GepChannelTelemetryCluster,
+    GepCustomCluster,
+    GepDeviceConfigurationCluster,
+    GepDeviceInfoCluster,
+    GepDeviceTelemetryCluster,
+)
 from .entity import MatterEntity, MatterEntityDescription
 from .helpers import MatterConfigEntry
 from .models import MatterDiscoverySchema
@@ -421,6 +429,25 @@ class MatterListSensor(MatterSensor):
             self._attr_native_value = None
 
 
+class MatterDiagnosticListSensor(MatterSensor):
+    """Representation of a raw Matter list as a diagnostic sensor."""
+
+    @callback
+    @override
+    def _update_from_device(self) -> None:
+        """Update the list count and expose its values as attributes."""
+        values = (
+            self.get_matter_attribute_value(self._entity_info.primary_attribute) or []
+        )
+        self._attr_native_value = len(values)
+        self._attr_extra_state_attributes = {"values": list(values)}
+
+
+def _format_octet_string(value: bytes | str) -> str:
+    """Format an octet string for display."""
+    return value.hex() if isinstance(value, bytes) else value
+
+
 # Discovery schema(s) to map Matter Attributes to HA entities
 DISCOVERY_SCHEMAS = [
     MatterDiscoverySchema(
@@ -478,6 +505,242 @@ DISCOVERY_SCHEMAS = [
         ),
         entity_class=MatterSensor,
         required_attributes=(GepCustomCluster.Attributes.LeverPressCount,),
+    ),
+    *(
+        MatterDiscoverySchema(
+            platform=Platform.SENSOR,
+            entity_description=MatterSensorEntityDescription(
+                key=f"GepDeviceInfo{attribute.__name__}",
+                entity_category=EntityCategory.DIAGNOSTIC,
+                translation_key=translation_key,
+            ),
+            entity_class=MatterSensor,
+            required_attributes=(attribute,),
+        )
+        for attribute, translation_key in (
+            (GepDeviceInfoCluster.Attributes.ProductId, "gep_product_id"),
+            (GepDeviceInfoCluster.Attributes.SerialNumber, "gep_serial_number"),
+            (
+                GepDeviceInfoCluster.Attributes.ConnectivityBootloaderVersion,
+                "connectivity_bootloader_version",
+            ),
+            (
+                GepDeviceInfoCluster.Attributes.ConnectivityApplicationVersion,
+                "connectivity_application_version",
+            ),
+            (
+                GepDeviceInfoCluster.Attributes.RtMcuBootloaderVersion,
+                "rt_mcu_bootloader_version",
+            ),
+            (
+                GepDeviceInfoCluster.Attributes.RtMcuApplicationVersion,
+                "rt_mcu_application_version",
+            ),
+            (GepDeviceInfoCluster.Attributes.DataModelVersion, "data_model_version"),
+            (
+                GepDeviceInfoCluster.Attributes.InterMcuProtocolVersion,
+                "inter_mcu_protocol_version",
+            ),
+            (
+                GepDeviceInfoCluster.Attributes.MatterStackVersion,
+                "matter_stack_version",
+            ),
+            (GepDeviceInfoCluster.Attributes.ControlBoard, "control_board"),
+            (GepDeviceInfoCluster.Attributes.ChannelCount, "channel_count"),
+            (GepDeviceInfoCluster.Attributes.ManufactureDate, "manufacture_date"),
+            (GepDeviceInfoCluster.Attributes.ManufacturePlant, "manufacture_plant"),
+            (GepDeviceInfoCluster.Attributes.ManufactureLine, "manufacture_line"),
+            (GepDeviceInfoCluster.Attributes.ManufactureLot, "manufacture_lot"),
+            (GepDeviceInfoCluster.Attributes.ManufacturerCode, "manufacturer_code"),
+            (GepDeviceInfoCluster.Attributes.EolTestDate, "eol_test_date"),
+            (
+                GepDeviceInfoCluster.Attributes.TestFixtureIdentifier,
+                "test_fixture_identifier",
+            ),
+        )
+    ),
+    MatterDiscoverySchema(
+        platform=Platform.SENSOR,
+        entity_description=MatterSensorEntityDescription(
+            key="GepDeviceConfigurationExternalModuleParameters",
+            entity_category=EntityCategory.DIAGNOSTIC,
+            translation_key="external_module_parameters",
+            device_to_ha=_format_octet_string,
+        ),
+        entity_class=MatterSensor,
+        required_attributes=(
+            GepDeviceConfigurationCluster.Attributes.ExternalModuleParameters,
+        ),
+    ),
+    *(
+        MatterDiscoverySchema(
+            platform=Platform.SENSOR,
+            entity_description=MatterSensorEntityDescription(
+                key=f"GepDeviceTelemetry{attribute.__name__}",
+                entity_category=EntityCategory.DIAGNOSTIC,
+                translation_key=translation_key,
+                native_unit_of_measurement=unit,
+                state_class=state_class,
+            ),
+            entity_class=MatterSensor,
+            required_attributes=(attribute,),
+        )
+        for attribute, translation_key, unit, state_class in (
+            (
+                GepDeviceTelemetryCluster.Attributes.PouredChannels,
+                "poured_channels",
+                None,
+                None,
+            ),
+            (
+                GepDeviceTelemetryCluster.Attributes.McuVoltage,
+                "mcu_voltage",
+                None,
+                SensorStateClass.MEASUREMENT,
+            ),
+            (
+                GepDeviceTelemetryCluster.Attributes.McuTemperature,
+                "mcu_temperature",
+                None,
+                SensorStateClass.MEASUREMENT,
+            ),
+            (
+                GepDeviceTelemetryCluster.Attributes.Uptime,
+                "uptime",
+                UnitOfTime.SECONDS,
+                SensorStateClass.TOTAL_INCREASING,
+            ),
+            (
+                GepDeviceTelemetryCluster.Attributes.BootCounter,
+                "boot_counter",
+                None,
+                SensorStateClass.TOTAL_INCREASING,
+            ),
+            (
+                GepDeviceTelemetryCluster.Attributes.DeviceAlarms,
+                "device_alarms",
+                None,
+                None,
+            ),
+        )
+    ),
+    *(
+        MatterDiscoverySchema(
+            platform=Platform.SENSOR,
+            entity_description=MatterSensorEntityDescription(
+                key=f"GepChannel{attribute.__name__}",
+                entity_category=EntityCategory.DIAGNOSTIC,
+                translation_key=translation_key,
+                state_class=state_class,
+            ),
+            entity_class=MatterSensor,
+            required_attributes=(attribute,),
+            endpoint_id=(2, 3),
+        )
+        for attribute, translation_key, state_class in (
+            *(
+                (attribute, translation_key, SensorStateClass.MEASUREMENT)
+                for attribute, translation_key in (
+                    (GepChannelTelemetryCluster.Attributes.Opening, "opening"),
+                    (
+                        GepChannelTelemetryCluster.Attributes.PwmDutyCycle,
+                        "pwm_duty_cycle",
+                    ),
+                    (GepChannelTelemetryCluster.Attributes.Temperature, "temperature"),
+                    (GepChannelTelemetryCluster.Attributes.Flowrate, "flowrate"),
+                    (GepChannelTelemetryCluster.Attributes.Volume, "volume"),
+                    (
+                        GepChannelTelemetryCluster.Attributes.DeltaPressure,
+                        "delta_pressure",
+                    ),
+                    (GepChannelTelemetryCluster.Attributes.Pressure0, "pressure_0"),
+                    (GepChannelTelemetryCluster.Attributes.Pressure1, "pressure_1"),
+                    (
+                        GepChannelTelemetryCluster.Attributes.DispensingTime,
+                        "dispensing_time",
+                    ),
+                    (
+                        GepChannelTelemetryCluster.Attributes.AverageOpening,
+                        "average_opening",
+                    ),
+                    (
+                        GepChannelTelemetryCluster.Attributes.AveragePwmDutyCycle,
+                        "average_pwm_duty_cycle",
+                    ),
+                    (
+                        GepChannelTelemetryCluster.Attributes.AverageTemperature,
+                        "average_temperature",
+                    ),
+                    (
+                        GepChannelTelemetryCluster.Attributes.AverageFlowrate,
+                        "average_flowrate",
+                    ),
+                    (
+                        GepChannelTelemetryCluster.Attributes.AverageVolume,
+                        "average_volume",
+                    ),
+                    (
+                        GepChannelTelemetryCluster.Attributes.AverageDeltaPressure,
+                        "average_delta_pressure",
+                    ),
+                    (
+                        GepChannelTelemetryCluster.Attributes.AveragePressure0,
+                        "average_pressure_0",
+                    ),
+                    (
+                        GepChannelTelemetryCluster.Attributes.AveragePressure1,
+                        "average_pressure_1",
+                    ),
+                    (
+                        GepChannelTelemetryCluster.Attributes.AverageDispensingTime,
+                        "average_dispensing_time",
+                    ),
+                )
+            ),
+            (
+                GepChannelTelemetryCluster.Attributes.ChannelState,
+                "channel_state",
+                None,
+            ),
+            (
+                GepChannelTelemetryCluster.Attributes.ActuatorCalibrationCounter,
+                "actuator_calibration_counter",
+                SensorStateClass.TOTAL_INCREASING,
+            ),
+            (
+                GepChannelTelemetryCluster.Attributes.ActuationsCounter,
+                "actuations_counter",
+                SensorStateClass.TOTAL_INCREASING,
+            ),
+            (
+                GepChannelTelemetryCluster.Attributes.ChannelAlarms,
+                "channel_alarms",
+                None,
+            ),
+        )
+    ),
+    *(
+        MatterDiscoverySchema(
+            platform=Platform.SENSOR,
+            entity_description=MatterSensorEntityDescription(
+                key=f"GepChannel{attribute.__name__}",
+                entity_category=EntityCategory.DIAGNOSTIC,
+                translation_key=translation_key,
+            ),
+            entity_class=MatterDiagnosticListSensor,
+            required_attributes=(attribute,),
+            endpoint_id=(2, 3),
+        )
+        for attribute, translation_key in (
+            (
+                GepChannelConfigurationCluster.Attributes.RegressionModelParameters,
+                "regression_model_parameters",
+            ),
+            (
+                GepChannelCalibrationCluster.Attributes.LinearizationCurve,
+                "linearization_curve",
+            ),
+        )
     ),
     MatterDiscoverySchema(
         platform=Platform.SENSOR,
